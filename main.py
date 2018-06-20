@@ -1,160 +1,202 @@
-#!/usr/bin/env python
 
+import os.path as path
 import os
-import os.path
-from tkinter import *
-from tkinter import ttk
-from tkinter import messagebox
-from tkinter import filedialog
-from tkinter import simpledialog
-from tkinter.scrolledtext import ScrolledText
+import wx
+import wx.stc as stc
 
 
-class AppUI(Frame):
+class App(wx.Frame):
 
-    def __init__(self, master=None):
+    def __init__(self, parent, title):
 
-        Frame.__init__(self, master, relief=FLAT, bd=0)
+        self.title = title
+        self.filename = ""
+        self.dirname = os.getcwd()
 
-        self.pack(fill=BOTH, expand=True)
+        wx.Frame.__init__(self, parent, title=self.title, size=(800, 600))
 
-        self.master.title("PyCode - Code Editor")
-
-        self.load_menu_bar()
+        self.create_status_and_menu_bar()
         self.load_widgets()
 
-    def about_dialog(self):
-        dialog = messagebox.showinfo(
-            "About", "A Simple Text Editor by Shardul Nalegave <nalegaveshardul40@gmail.com>")
+        self.Show()
+        self.Maximize()
 
-    def new_doc(self):
-        self.editor.delete("1.0", "end-1c")
-        self.master.title("PyCode - Code Editor")
+    def create_status_and_menu_bar(self):
 
-    def open_file(self):
-        try:
-            self.status_bar["text"] = "Opening File..."
-            loc = filedialog.askopenfilename()
-            self.file = os.path.basename(loc)
-            self.filePath = loc
-            self.master.title(self.file + " - PyCode - Code Editor")
-            with open(self.filePath, "r") as file:
-                self.new_doc()
-                self.editor.insert("1.0", file.read())
-            self.status_bar["text"] = "PyCode - Code Editor"
-        except TclError:
-            self.master.title("PyCode - Code Editor")
-        except FileNotFoundError:
-            self.master.title("PyCode - Code Editor")
+        filemenu = wx.Menu()
+        file_new = filemenu.Append(
+            wx.ID_NEW, "&New\tCtrl+N", "Create A New Document")
+        file_open = filemenu.Append(
+            wx.ID_OPEN, "&Open\tCtrl+O", "Open An Existing Document")
+        file_save = filemenu.Append(
+            wx.ID_SAVE, "&Save\tCtrl+S", "Save Document")
+        file_saveas = filemenu.Append(
+            wx.ID_SAVEAS, "Save &As\tCtrl+Shift+S", "Save As Document")
+        filemenu.AppendSeparator()
+        quit_menuitem = filemenu.Append(
+            wx.ID_EXIT, "&Quit\tCtrl+Q", "Quits The Application")
 
-    def load_menu_bar(self):
+        menubar = wx.MenuBar()
+        menubar.Append(filemenu, "&File")
+        self.SetMenuBar(menubar)
 
-        self.menubar = Menu(self)
+        self.Bind(wx.EVT_MENU, self.new_file, file_new)
+        self.Bind(wx.EVT_MENU, self.open_file, file_open)
+        self.Bind(wx.EVT_MENU, self.save_file, file_save)
+        self.Bind(wx.EVT_MENU, self.saveas_file, file_saveas)
+        self.Bind(wx.EVT_MENU, self.exit_app, quit_menuitem)
 
-        menu = Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="File", menu=menu)
-        menu.add_command(label="Open", command=self.open_file)
-        menu.add_command(label="New", command=self.new_doc)
-        menu.add_command(label="Save", command=self.save_file)
-        menu.add_command(label="Save As", command=self.saveas_file)
-        menu.add_separator()
-        menu.add_command(label="Quit", command=self.master.destroy)
-
-        menu = Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Edit", menu=menu)
-        menu.add_command(label="Font Size", command=self.edit_font_size)
-        menu.add_command(label="Font Family", command=self.edit_font_family)
-
-        self.menubar.add_cascade(label="About", command=self.about_dialog)
-
-        try:
-            self.master.config(menu=self.menubar)
-        except AttributeError:
-            # master is a toplevel window (Python 1.4/Tkinter 1.63)
-            self.master.tk.call(master, "config", "-menu", self.menubar)
-
-    def edit_font_size(self):
-        try:
-            new_size = simpledialog.askinteger("Font Size", "New Font Size")
-            self.editor_font_size = new_size
-            self.editor.configure(
-                font=(self.editor_font_family, self.editor_font_size))
-        except TclError:
-            pass
-
-    def edit_font_family(self):
-        try:
-            new_family = simpledialog.askstring(
-                "Font Family", "New Font Family")
-            self.editor_font_family = new_family
-            self.editor.configure(
-                font=(self.editor_font_family, self.editor_font_size))
-        except TclError:
-            pass
-
-    def save_file(self):
-        try:
-            self.status_bar["text"] = "Saving File..."
-            text_to_save = self.editor.get("1.0", "end-1c")
-            loc = self.filePath
-            try:
-                with open(loc, "w+") as file:
-                    file.write(text_to_save)
-                    file.close()
-            except FileNotFoundError:
-                pass
-            self.status_bar["text"] = "PyCode - Code Editor"
-            self.master.title(os.path.basename(
-                loc) + " - PyCode - Code Editor ")
-            self.file = os.path.basename(loc)
-            self.filePath = loc
-        except TclError:
-            self.master.title("PyCode - Code Editor")
-        except FileNotFoundError:
-            self.master.title("PyCode - Code Editor")
-
-    def saveas_file(self):
-        try:
-            self.status_bar["text"] = "Saving File..."
-            text_to_save = self.editor.get("1.0", "end-1c")
-            loc = filedialog.asksaveasfilename()
-            try:
-                with open(loc, "w+") as file:
-                    file.write(text_to_save)
-                    file.close()
-            except FileNotFoundError:
-                pass
-            self.status_bar["text"] = "PyCode - Code Editor"
-            self.master.title(os.path.basename(
-                loc) + " - PyCode - Code Editor ")
-            self.file = os.path.basename(loc)
-            self.filePath = loc
-        except TclError:
-            self.master.title("PyCode - Code Editor")
-        except FileNotFoundError:
-            self.master.title("PyCode - Code Editor")
+        self.CreateStatusBar()
+        self.StatusBar.SetBackgroundColour((220, 220, 220))
 
     def load_widgets(self):
 
-        # Main Editor
-        self.editor_font_size = 10
-        self.editor_font_family = "Open Sans"
-        self.editor = ScrolledText(self, bd=0, relief=FLAT)
-        self.editor.config(wrap=WORD)
-        self.editor.configure(
-            font=(self.editor_font_family, self.editor_font_size))
-        self.editor.pack(expand=True, side=TOP, fill=BOTH)
-        # self.editor.bind("<KeyPress>", self.syntaxHighlight)
+        self.editor = stc.StyledTextCtrl(
+            self, style=wx.TE_MULTILINE | wx.TE_WORDWRAP)
+        self.editor.CmdKeyAssign(
+            ord("+"), stc.STC_SCMOD_CTRL, stc.STC_CMD_ZOOMIN)
+        self.editor.CmdKeyAssign(
+            ord("-"), stc.STC_SCMOD_CTRL, stc.STC_CMD_ZOOMOUT)
+        self.editor.SetViewWhiteSpace(False)
+        self.editor.SetMargins(10, 0)
+        self.editor.SetMarginType(1, stc.STC_MARGIN_NUMBER)
+        self.editor.SetMarginWidth(1, 25)
+        self.editor.SetValue("""
 
-        # Status Bar
-        self.status_bar = Label(self, text="PyCode - Code Editor",
-                                bd=1, relief=SUNKEN, anchor=W)
-        self.status_bar.pack(side=BOTTOM, fill=X)
+from sys import argv
 
+def greet(name):
+    print("Hello, {}".format(name))
 
-root = Tk()
+if __name__ == "__main__":
+    greet(argv[1])
 
-app = AppUI(root)
-app.pack()
+""")
+
+    def new_file(self, event):
+        projectTypeList = [
+            "Simple App", "Command Line App", "Tkinter App", "WxPython App", "Flask Web App"]
+        dlg = wx.SingleChoiceDialog(
+            self, "Pick The Type Of Project You Want To Create:", "New Project", projectTypeList)
+        if dlg.ShowModal() == wx.ID_OK:
+            filename = ""
+            selection = dlg.GetSelection()
+            selection = projectTypeList[selection]
+            if selection == "Simple App":
+                self.editor.SetValue("print(Hello, World!'')")
+            elif selection == "Command Line App":
+                self.editor.SetValue("""
+
+from sys import argv
+
+def greet(name):
+    print("Hello, {}".format(name))
+
+if __name__ == "__main__":
+    greet(argv[1])
+
+""")
+            elif selection == "Tkinter App":
+                self.editor.SetValue("""
+
+import tkinter
+
+root = tkinter.Tk()
+root.title("Hello World App")
+
+label = tkinter.Label(root, text="Hello, World!")
+label.pack(pady=20)
 
 root.mainloop()
+
+""")
+
+            elif selection == "WxPython App":
+                self.editor.SetValue("""
+
+import wx
+
+app = wx.App()
+
+frm = wx.Frame(None, title="Hello World")
+frm.Show()
+
+app.MainLoop()
+
+""")
+
+            elif selection == "Flask Web App":
+                self.editor.SetValue("""
+
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "Hello, World!"
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+""")
+        dlg.Destroy()
+
+    def exit_app(self, event):
+        self.Close()
+
+    def open_file(self, event):
+        dlg = wx.FileDialog(
+            self,
+            message="Open File",
+            defaultDir=self.dirname,
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
+        )
+        if dlg.ShowModal() == wx.ID_OK:
+            paths = dlg.GetPaths()
+            self.editor.SetValue(open(paths[0], "r").read())
+            self.filename = path.basename(paths[0])
+            self.dirname = path.dirname(paths[0])
+        dlg.Destroy()
+
+    def save_file(self, event):
+        try:
+            fp = path.join(self.dirname, self.filename)
+            with open(fp, "w+") as file:
+                file.write(self.editor.GetValue())
+        except:
+            dlg = wx.FileDialog(
+                self,
+                message="Save As",
+                defaultDir=self.dirname,
+                style=wx.FD_SAVE
+            )
+            if dlg.ShowModal() == wx.ID_OK:
+                loc = dlg.GetPath()
+                self.dirname = path.dirname(loc)
+                self.filename = path.basename(loc)
+                fp = path.join(self.dirname, self.filename)
+                with open(fp, "w+") as file:
+                    file.write(self.editor.GetValue())
+                dlg.Destroy()
+
+    def saveas_file(self, event):
+        dlg = wx.FileDialog(
+            self,
+            message="Save As",
+            defaultDir=self.dirname,
+            style=wx.FD_SAVE
+        )
+        if dlg.ShowModal() == wx.ID_OK:
+            loc = dlg.GetPath()
+            self.dirname = path.dirname(loc)
+            self.filename = path.basename(loc)
+            fp = path.join(self.dirname, self.filename)
+            with open(fp, "w+") as file:
+                file.write(self.editor.GetValue())
+            dlg.Destroy()
+
+
+root = wx.App()
+App(None, title="PyCode - Code Editor")
+root.MainLoop()
