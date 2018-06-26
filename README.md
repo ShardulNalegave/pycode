@@ -22,7 +22,7 @@ Clone this repo and run the `main.py` file.
 # Screenshots
 Some screenshots.
 
-<img src="./img/win.png">
+<img src="./img/main.png">
 <img src="./img/new.png">
 
 
