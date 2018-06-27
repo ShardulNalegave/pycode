@@ -33,31 +33,12 @@ import os
 import wx
 import wx.stc as stc
 import keyword
+import temps_for_project
+import json
 
-if wx.Platform == '__WXMSW__':
-    faces = {'times': 'Times New Roman',
-             'mono': 'Courier New',
-             'helv': 'Arial',
-             'other': 'Comic Sans MS',
-             'size': 10,
-             'size2': 8,
-             }
-elif wx.Platform == '__WXMAC__':
-    faces = {'times': 'Times New Roman',
-             'mono': 'Monaco',
-             'helv': 'Arial',
-             'other': 'Comic Sans MS',
-             'size': 12,
-             'size2': 10,
-             }
-else:
-    faces = {'times': 'Times',
-             'mono': 'Courier',
-             'helv': 'Helvetica',
-             'other': 'new century schoolbook',
-             'size': 12,
-             'size2': 10,
-             }
+from highlighter import Highlighter
+
+config = json.loads(open("./user_config.json").read())
 
 
 class App(wx.Frame):
@@ -66,6 +47,7 @@ class App(wx.Frame):
 
         self.title = title
         self.filename = ""
+        self.file_ext = ".py"
         self.dirname = os.getcwd()
 
         wx.Frame.__init__(self, parent, title=self.title, size=(800, 600))
@@ -77,7 +59,7 @@ class App(wx.Frame):
         self.Show()
         self.Maximize()
 
-        self.open_file()
+        self.open_project()
 
     def create_status_and_menu_bar(self):
 
@@ -103,8 +85,8 @@ class App(wx.Frame):
         menubar.Append(projectmenu, "&Project")
         self.SetMenuBar(menubar)
 
-        self.Bind(wx.EVT_MENU, self.new_file, file_new)
-        self.Bind(wx.EVT_MENU, self.open_file, file_open)
+        self.Bind(wx.EVT_MENU, self.new_project, file_new)
+        self.Bind(wx.EVT_MENU, self.open_project, file_open)
         self.Bind(wx.EVT_MENU, self.save_file, file_save)
         self.Bind(wx.EVT_MENU, self.saveas_file, file_saveas)
         self.Bind(wx.EVT_MENU, self.exit_app, quit_menuitem)
@@ -116,19 +98,34 @@ class App(wx.Frame):
         pass
 
     def updateDirTree(self):
-        def recursion(items, parent=None, pathToAdd=""):
+        def recursion(items, parent=None, folName=""):
             for item in items:
                 if path.isdir(path.join(self.dirname, item)):
                     folder_for_dir = self.dirTree.AppendItem(parent, item)
                     self.dirTree.SetItemData(
                         folder_for_dir, ("key", "value"))
                     recursion(os.listdir(
-                        path.join(self.dirname, item)), folder_for_dir)
+                        path.join(self.dirname, item)), folder_for_dir, item)
                 else:
-                    self.dirTree.AppendItem(parent, item)
+                    file = self.dirTree.AppendItem(parent, item)
+                    self.dirTree.SetItemData(
+                        file, {"Path": path.join(self.dirname, folName, item)})
         root = self.dirTree.AddRoot(path.basename(self.dirname))
         self.dirTree.SetItemData(root, ("key", "value"))
         recursion(os.listdir(self.dirname), root)
+
+    def updateEditorContent(self, event):
+        self.filename = self.dirTree.GetItemData(
+            self.dirTree.GetSelection())["Path"]
+        self.editor.SetValue(open(self.filename, "r").read())
+        _, self.file_ext = path.splitext(self.filename)
+        del _
+        if self.file_ext == ".py":
+            Highlighter.python(editor=self.editor)
+        elif self.file_ext == ".htm" or self.file_ext == ".html":
+            Highlighter.html(editor=self.editor)
+        elif self.file_ext in [".yml", ".yaml"]:
+            Highlighter.yaml(editor=self.editor)
 
     def load_widgets(self):
 
@@ -138,6 +135,7 @@ class App(wx.Frame):
             self.notebook, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize,
             wx.TR_HAS_BUTTONS |
             wx.TR_HIDE_ROOT)
+        self.dirTree.Bind(wx.EVT_TREE_SEL_CHANGED, self.updateEditorContent)
         self.updateDirTree()
 
         self.notebook.AddPage(self.dirTree, "Project")
@@ -149,47 +147,27 @@ class App(wx.Frame):
         self.editor.CmdKeyAssign(
             ord("-"), stc.STC_SCMOD_CTRL, stc.STC_CMD_ZOOMOUT)
         self.editor.SetViewWhiteSpace(False)
-        self.editor.SetMargins(10, 0)
+        self.editor.SetMargins(50, 50)
         self.editor.SetMarginType(1, stc.STC_MARGIN_NUMBER)
         self.editor.SetMarginWidth(2, 35)
+        self.editor.SetMarginLeft(10)
         # self.editor.SetMarginType(
         #     2, stc.STC_MARGIN_SYMBOL | stc.STC_MARGIN_NUMBER)
         # self.editor.SetMarginMask(2, stc.STC_MASK_FOLDERS)
         # self.editor.SetMarginSensitive(2, True)
         # self.editor.SetMarginWidth(2, 35)
-        self.editor.SetLexer(stc.STC_LEX_PYTHON)
-        self.editor.SetKeyWords(
-            0, " ".join(keyword.kwlist))
         self.editor.SetProperty("fold", "1")
         self.editor.SetProperty("tab.timmy.whinge.level", "1")
         self.editor.SetEdgeMode(stc.STC_EDGE_BACKGROUND)
         self.editor.SetEdgeColumn(78)
         self.editor.Bind(wx.EVT_KEY_DOWN, self.updateCaretPosInStatusBar)
         self.editor.SetValue("import __hello__")
+        self.editor.SetIndent(4)
 
-        self.syntax_highlight_styles_python = {
-            "default": "#000000",
-            "keyword": "#EF5350",
-            "comment-line": "#BDBDBD",
-            "block_comment": "#BDBDBD",
-            "string": "#43A047",
-            "block_string": "#43A047",
-            "operators": "#EF5350",
-            "number": "#29B6F6",
-            "EOL_when_string_not_closed": "#E53935",
-            "class_and_function_names": "#7E57C2",
-            "identifiers": "#000000"
-        }
-
-        self.global_styles = {
-            "linenum_back": "#F5F5F5",
-            "cursor": "#000000"
-        }
-
-        self.update_syntax_highlight(
-            self.syntax_highlight_styles_python, self.global_styles)
+        Highlighter.python(editor=self.editor)
 
         self.notebook.AddPage(self.editor, "Editor")
+        self.notebook.ChangeSelection(1)
 
     def updateCaretPosInStatusBar(self, event=None):
         lineno = int(self.editor.GetCurrentLine()) + 1
@@ -197,80 +175,7 @@ class App(wx.Frame):
         if event != None:
             event.Skip()
 
-    def update_syntax_highlight(self, python_styles, global_styles):
-
-        if not isinstance(python_styles, dict):
-            print("Styles Passed Should Be Dictionaries")
-            return False
-
-        # Make some styles,  The lexer defines what each style is used for, we
-        # just have to define what each style looks like.  This set is adapted from
-        # Scintilla sample property files.
-
-        # Global default styles for all languages
-        self.editor.StyleSetSpec(stc.STC_STYLE_DEFAULT,
-                                 "face:%(helv)s,size:%(size)d" % faces)
-        self.editor.StyleClearAll()  # Reset all to be like the default
-
-        # Global default styles for all languages
-        self.editor.StyleSetSpec(stc.STC_STYLE_DEFAULT,
-                                 "face:%(helv)s,size:%(size)d" % faces)
-        self.editor.StyleSetSpec(stc.STC_STYLE_LINENUMBER,
-                                 "back:" + global_styles["linenum_back"] + ",face:%(helv)s,size:%(size2)d" % faces)
-        self.editor.StyleSetSpec(
-            stc.STC_STYLE_CONTROLCHAR, "face:%(other)s" % faces)
-        self.editor.StyleSetSpec(stc.STC_STYLE_BRACELIGHT,
-                                 "fore:#FFFFFF,back:#0000FF,bold")
-        self.editor.StyleSetSpec(stc.STC_STYLE_BRACEBAD,
-                                 "fore:#000000,back:#FF0000,bold")
-
-        # Python styles
-        # Default
-        self.editor.StyleSetSpec(stc.STC_P_DEFAULT,
-                                 "fore:" + python_styles["default"] + ",face:%(helv)s,size:%(size)d" % faces)
-        # Comments
-        self.editor.StyleSetSpec(stc.STC_P_COMMENTLINE,
-                                 "fore:" + python_styles["comment-line"] + ",face:%(other)s,size:%(size)d" % faces)
-        # Number
-        self.editor.StyleSetSpec(stc.STC_P_NUMBER,
-                                 "fore:" + python_styles["number"] + ",size:%(size)d" % faces)
-        # String
-        self.editor.StyleSetSpec(stc.STC_P_STRING,
-                                 "fore:" + python_styles["string"] + ",face:%(helv)s,size:%(size)d" % faces)
-        # Single quoted string
-        self.editor.StyleSetSpec(stc.STC_P_CHARACTER,
-                                 "fore:" + python_styles["string"] + ",face:%(helv)s,size:%(size)d" % faces)
-        # Keyword
-        self.editor.StyleSetSpec(
-            stc.STC_P_WORD, "fore:" + python_styles["keyword"] + ",size:%(size)d" % faces)
-        # Triple quotes
-        self.editor.StyleSetSpec(stc.STC_P_TRIPLE,
-                                 "fore:" + python_styles["block_string"] + ",size:%(size)d" % faces)
-        # Triple double quotes
-        self.editor.StyleSetSpec(stc.STC_P_TRIPLEDOUBLE,
-                                 "fore:" + python_styles["block_string"] + ",size:%(size)d" % faces)
-        # Class name definition
-        self.editor.StyleSetSpec(stc.STC_P_CLASSNAME,
-                                 "fore:" + python_styles["class_and_function_names"] + ",size:%(size)d" % faces)
-        # Function or method name definition
-        self.editor.StyleSetSpec(stc.STC_P_DEFNAME,
-                                 "fore:" + python_styles["class_and_function_names"] + ",size:%(size)d" % faces)
-        # Operators
-        self.editor.StyleSetSpec(
-            stc.STC_P_OPERATOR, "fore:" + python_styles["operators"] + ",size:%(size)d" % faces)
-        # Identifiers
-        self.editor.StyleSetSpec(stc.STC_P_IDENTIFIER,
-                                 "fore:" + python_styles["identifiers"] + ",face:%(helv)s,size:%(size)d" % faces)
-        # Comment-blocks
-        self.editor.StyleSetSpec(stc.STC_P_COMMENTBLOCK,
-                                 "fore:" + python_styles["block_comment"] + ",size:%(size)d" % faces)
-        # End of line where string is not closed
-        self.editor.StyleSetSpec(
-            stc.STC_P_STRINGEOL, "fore:" + python_styles["EOL_when_string_not_closed"] + ",face:%(mono)s,back:#E0C0E0,eol,size:%(size)d" % faces)
-
-        self.editor.SetCaretForeground(global_styles["cursor"])
-
-    def new_file(self, event):
+    def new_project(self, event):
         projectTypeList = [
             "Simple App", "Command Line App", "Tkinter App", "WxPython App", "Flask Web App"]
         dlg = wx.SingleChoiceDialog(
@@ -279,70 +184,38 @@ class App(wx.Frame):
             filename = ""
             selection = dlg.GetSelection()
             selection = projectTypeList[selection]
-            if selection == "Simple App":
-                self.editor.SetValue("print(Hello, World!'')")
-            elif selection == "Command Line App":
-                self.editor.SetValue("""
-
-from sys import argv
-
-def greet(name):
-        print("Hello, {}".format(name))
-
-if __name__ == "__main__":
-        greet(argv[1])
-
-""")
-            elif selection == "Tkinter App":
-                self.editor.SetValue("""
-
-import tkinter
-
-root = tkinter.Tk()
-root.title("Hello World App")
-
-label = tkinter.Label(root, text="Hello, World!")
-label.pack(pady=20)
-
-root.mainloop()
-
-""")
-
-            elif selection == "WxPython App":
-                self.editor.SetValue("""
-
-import wx
-
-app = wx.App()
-
-frm = wx.Frame(None, title="Hello World")
-frm.Show()
-
-app.MainLoop()
-
-""")
-
-            elif selection == "Flask Web App":
-                self.editor.SetValue("""
-
-from flask import Flask
-
-app = Flask(__name__)
-
-@app.route("/")
-def index():
-        return "Hello, World!"
-
-if __name__ == "__main__":
-        app.run(debug=True)
-
-""")
+            dlg = wx.DirDialog(self, "Select Directory For Your Project",
+                               self.dirname, style=wx.DD_DEFAULT_STYLE)
+            if dlg.ShowModal() == wx.ID_OK:
+                self.editor.SetValue("")
+                self.dirname = dlg.GetPath()
+                os.chdir(self.dirname)
+                with open(path.join(os.getcwd(), "main.py"), "w+") as file:
+                    if selection == "Simple App":
+                        self.editor.SetValue(temps_for_project.simple_app)
+                        file.write(self.editor.GetValue)
+                    elif selection == "Command Line App":
+                        self.editor.SetValue(
+                            temps_for_project.command_line)
+                        file.write(self.editor.GetValue())
+                    elif selection == "Tkinter App":
+                        self.editor.SetValue(temps_for_project.tkinter)
+                        file.write(self.editor.GetValue())
+                    elif selection == "WxPython App":
+                        self.editor.SetValue(temps_for_project.wx)
+                        file.write(self.editor.GetValue())
+                    elif selection == "Flask Web App":
+                        self.editor.SetValue(temps_for_project.flask)
+                        file.write(self.editor.GetValue())
+                self.dirTree.DeleteAllItems()
+                self.updateDirTree()
+                self.notebook.ChangeSelection(1)
         dlg.Destroy()
 
     def exit_app(self, event):
         self.Close()
 
-    def open_file(self, event=None):
+    def open_project(self, event=None):
         dlg = wx.DirDialog(self, "Open Project", style=wx.DD_DEFAULT_STYLE)
         if dlg.ShowModal() == wx.ID_OK:
             self.dirname = dlg.GetPath()
