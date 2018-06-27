@@ -77,8 +77,6 @@ class App(wx.Frame):
         self.Show()
         self.Maximize()
 
-        self.open_file()
-
     def create_status_and_menu_bar(self):
 
         filemenu = wx.Menu()
@@ -115,35 +113,10 @@ class App(wx.Frame):
     def install_package(self, event):
         pass
 
-    def updateDirTree(self):
-        def recursion(items, parent=None, pathToAdd=""):
-            for item in items:
-                if path.isdir(path.join(self.dirname, item)):
-                    folder_for_dir = self.dirTree.AppendItem(parent, item)
-                    self.dirTree.SetItemData(
-                        folder_for_dir, ("key", "value"))
-                    recursion(os.listdir(
-                        path.join(self.dirname, item)), folder_for_dir)
-                else:
-                    self.dirTree.AppendItem(parent, item)
-        root = self.dirTree.AddRoot(path.basename(self.dirname))
-        self.dirTree.SetItemData(root, ("key", "value"))
-        recursion(os.listdir(self.dirname), root)
-
     def load_widgets(self):
 
-        self.notebook = wx.Notebook(self)
-
-        self.dirTree = wx.TreeCtrl(
-            self.notebook, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize,
-            wx.TR_HAS_BUTTONS |
-            wx.TR_HIDE_ROOT)
-        self.updateDirTree()
-
-        self.notebook.AddPage(self.dirTree, "Project")
-
         self.editor = stc.StyledTextCtrl(
-            self.notebook, style=wx.TE_MULTILINE | wx.TE_WORDWRAP)
+            self, style=wx.TE_MULTILINE | wx.TE_WORDWRAP)
         self.editor.CmdKeyAssign(
             ord("+"), stc.STC_SCMOD_CTRL, stc.STC_CMD_ZOOMIN)
         self.editor.CmdKeyAssign(
@@ -165,7 +138,17 @@ class App(wx.Frame):
         self.editor.SetEdgeMode(stc.STC_EDGE_BACKGROUND)
         self.editor.SetEdgeColumn(78)
         self.editor.Bind(wx.EVT_KEY_DOWN, self.updateCaretPosInStatusBar)
-        self.editor.SetValue("import __hello__")
+        self.editor.SetValue("""
+
+from sys import argv
+
+def greet(name):
+        print("Hello, {}".format(name))
+
+if __name__ == "__main__":
+        greet(argv[1])
+
+""")
 
         self.syntax_highlight_styles_python = {
             "default": "#000000",
@@ -188,8 +171,6 @@ class App(wx.Frame):
 
         self.update_syntax_highlight(
             self.syntax_highlight_styles_python, self.global_styles)
-
-        self.notebook.AddPage(self.editor, "Editor")
 
     def updateCaretPosInStatusBar(self, event=None):
         lineno = int(self.editor.GetCurrentLine()) + 1
@@ -342,12 +323,18 @@ if __name__ == "__main__":
     def exit_app(self, event):
         self.Close()
 
-    def open_file(self, event=None):
-        dlg = wx.DirDialog(self, "Open Project", style=wx.DD_DEFAULT_STYLE)
+    def open_file(self, event):
+        dlg = wx.FileDialog(
+            self,
+            message="Open File",
+            defaultDir=self.dirname,
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
+        )
         if dlg.ShowModal() == wx.ID_OK:
-            self.dirname = dlg.GetPath()
-            self.dirTree.DeleteAllItems()
-            self.updateDirTree()
+            paths = dlg.GetPaths()
+            self.editor.SetValue(open(paths[0], "r").read())
+            self.filename = path.basename(paths[0])
+            self.dirname = path.dirname(paths[0])
         dlg.Destroy()
 
     def save_file(self, event):

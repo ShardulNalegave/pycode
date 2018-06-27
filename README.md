@@ -30,5 +30,5 @@ Some screenshots.
 This project is completely **Open-Source**. So, anyone is free to contribute.
 
 
-### A Project By [Shardul Nalegave](https://shardul.netlify.com)
-### This Project Is Licensed Under [The MIT LICENSE](./LICENSE)
+#### A Project By [Shardul Nalegave](https://shardul.netlify.com)
+#### This Project Is Licensed Under [The MIT LICENSE](./LICENSE)
