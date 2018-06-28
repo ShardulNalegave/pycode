@@ -1,4 +1,3 @@
-
 """
 
     author: Shardul Nalegave
@@ -36,6 +35,7 @@ import keyword
 import temps_for_project
 import json
 import wx.lib.agw.flatnotebook as Notebook_Widget
+import wx.py
 
 from yapf.yapflib.yapf_api import FormatCode
 
@@ -45,7 +45,6 @@ config = json.loads(open("./user_config.json").read())
 
 
 class App(wx.Frame):
-
     def __init__(self, parent, title):
 
         self.title = title
@@ -87,33 +86,35 @@ class App(wx.Frame):
         file_new_menu_file_menu_file = file_new_menu_file_menu.Append(
             wx.ID_ANY, "&File", "Create A File")
         file_new_menu.AppendMenu(wx.ID_ANY, "&File", file_new_menu_file_menu)
+        file_new_menu.AppendSeparator()
+        file_new_menu_directory = file_new_menu.Append(
+            wx.ID_ANY, "&Directory", "Create A New Directory")
         # file_new = filemenu.Append(
         #     wx.ID_NEW, "&New\tCtrl+N", "Create A New Document")
         filemenu.AppendMenu(wx.ID_NEW, "&New", file_new_menu)
-        file_open = filemenu.Append(
-            wx.ID_OPEN, "&Open\tCtrl+O", "Open An Existing Document")
-        file_save = filemenu.Append(
-            wx.ID_SAVE, "&Save\tCtrl+S", "Save Document")
-        file_saveas = filemenu.Append(
-            wx.ID_SAVEAS, "Save &As\tCtrl+Shift+S", "Save As Document")
+        file_open = filemenu.Append(wx.ID_OPEN, "&Open\tCtrl+O",
+                                    "Open An Existing Document")
+        file_save = filemenu.Append(wx.ID_SAVE, "&Save\tCtrl+S",
+                                    "Save Document")
+        file_saveas = filemenu.Append(wx.ID_SAVEAS, "Save &As\tCtrl+Shift+S",
+                                      "Save As Document")
         filemenu.AppendSeparator()
-        quit_menuitem = filemenu.Append(
-            wx.ID_EXIT, "&Quit\tCtrl+Q", "Quits The Application")
+        quit_menuitem = filemenu.Append(wx.ID_EXIT, "&Quit\tCtrl+Q",
+                                        "Quits The Application")
 
-        projectmenu = wx.Menu()
-        project_install_package = projectmenu.Append(
-            wx.ID_ANY, "&Install A Package\tCtrl+Shift+I", "Install A Python Package")
+        viewmenu = wx.Menu()
+        viewmenu_shell = viewmenu.Append(wx.ID_ANY, "&Shell", "Start Python Shell")
 
         menubar = wx.MenuBar()
         menubar.Append(filemenu, "&File")
-        menubar.Append(projectmenu, "&Project")
+        menubar.Append(viewmenu, "&View")
         self.SetMenuBar(menubar)
 
         # self.Bind(wx.EVT_MENU, self.new_project, file_new)
+        self.Bind(wx.EVT_MENU, self.new_directory, file_new_menu_directory)
         self.Bind(wx.EVT_MENU, self.new_python_project,
                   file_new_menu_python_project)
-        self.Bind(wx.EVT_MENU, self.new_file,
-                  file_new_menu_file_menu_file)
+        self.Bind(wx.EVT_MENU, self.new_file, file_new_menu_file_menu_file)
         self.Bind(wx.EVT_MENU, self.new_python_file,
                   file_new_menu_file_menu_python)
         self.Bind(wx.EVT_MENU, self.new_html_file,
@@ -124,13 +125,30 @@ class App(wx.Frame):
         self.Bind(wx.EVT_MENU, self.save_file, file_save)
         self.Bind(wx.EVT_MENU, self.saveas_file, file_saveas)
         self.Bind(wx.EVT_MENU, self.exit_app, quit_menuitem)
+        self.Bind(wx.EVT_MENU, self.view_python_shell, viewmenu_shell)
+
+    def view_python_shell(self, event):
+        if self.file_ext == ".py":
+            shellWin = wx.Frame(self, title="Python Shell", size=(800, 600))
+            shell = wx.py.shell.Shell(
+                shellWin, wx.ID_ANY)
+            shellWin.Show()
+
+    def new_directory(self, event):
+        dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
+        if dlg.ShowModal() == wx.ID_OK:
+            dirname = dlg.GetValue()
+            os.mkdir(path.join(self.dirname, dirname))
+            self.dirTree.DeleteAllItems()
+            self.updateDirTree()
+        dlg.Destroy()
 
     def new_python_file(self, event):
         dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
         if dlg.ShowModal() == wx.ID_OK:
             path_of_file = dlg.GetValue()
-            open(path.join(self.dirname, "{}.py".format(
-                path_of_file)), "w+").write("import __hello__")
+            open(path.join(self.dirname, "{}.py".format(path_of_file)),
+                 "w+").write("import __hello__")
             self.dirTree.DeleteAllItems()
             self.updateDirTree()
         dlg.Destroy()
@@ -139,8 +157,9 @@ class App(wx.Frame):
         dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
         if dlg.ShowModal() == wx.ID_OK:
             path_of_file = dlg.GetValue()
-            open(path.join(self.dirname, "{}.html".format(
-                path_of_file)), "w+").write(temps_for_project.html)
+            open(
+                path.join(self.dirname, "{}.html".format(path_of_file)),
+                "w+").write(temps_for_project.html)
             self.dirTree.DeleteAllItems()
             self.updateDirTree()
         dlg.Destroy()
@@ -149,8 +168,8 @@ class App(wx.Frame):
         dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
         if dlg.ShowModal() == wx.ID_OK:
             path_of_file = dlg.GetValue()
-            open(path.join(self.dirname, "{}.yml".format(
-                path_of_file)), "w+").write(temps_for_project.yml)
+            open(path.join(self.dirname, "{}.yml".format(path_of_file)),
+                 "w+").write(temps_for_project.yml)
             self.dirTree.DeleteAllItems()
             self.updateDirTree()
         dlg.Destroy()
@@ -172,14 +191,15 @@ class App(wx.Frame):
             for item in items:
                 if path.isdir(path.join(self.dirname, item)):
                     folder_for_dir = self.dirTree.AppendItem(parent, item)
-                    self.dirTree.SetItemData(
-                        folder_for_dir, ("key", "value"))
-                    recursion(os.listdir(
-                        path.join(self.dirname, item)), folder_for_dir, item)
+                    self.dirTree.SetItemData(folder_for_dir, ("key", "value"))
+                    recursion(
+                        os.listdir(path.join(self.dirname, item)),
+                        folder_for_dir, item)
                 else:
                     file = self.dirTree.AppendItem(parent, item)
                     self.dirTree.SetItemData(
                         file, {"Path": path.join(self.dirname, folName, item)})
+
         root = self.dirTree.AddRoot(path.basename(self.dirname))
         self.dirTree.SetItemData(root, ("key", "value"))
         recursion(os.listdir(self.dirname), root)
@@ -206,17 +226,15 @@ class App(wx.Frame):
 
     def load_widgets(self):
 
-        self.notebook = Notebook_Widget.FlatNotebook(
-            self, wx.ID_ANY)
+        self.notebook = Notebook_Widget.FlatNotebook(self, wx.ID_ANY)
 
         self.notebook.SetAGWWindowStyleFlag(Notebook_Widget.FNB_NO_X_BUTTON)
         self.notebook.SetAGWWindowStyleFlag(Notebook_Widget.FNB_NO_NAV_BUTTONS)
         self.notebook.SetAGWWindowStyleFlag(Notebook_Widget.FNB_NODRAG)
 
-        self.dirTree = wx.TreeCtrl(
-            self.notebook, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize,
-            wx.TR_HAS_BUTTONS |
-            wx.TR_HIDE_ROOT)
+        self.dirTree = wx.TreeCtrl(self.notebook, wx.ID_ANY,
+                                   wx.DefaultPosition, wx.DefaultSize,
+                                   wx.TR_HAS_BUTTONS | wx.TR_HIDE_ROOT)
         self.dirTree.Bind(wx.EVT_TREE_SEL_CHANGED, self.updateEditorContent)
         self.updateDirTree()
 
@@ -247,6 +265,7 @@ class App(wx.Frame):
         self.editor.SetIndent(4)
 
         Highlighter.python(editor=self.editor)
+        self.file_ext = ".py"
 
         self.notebook.AddPage(self.editor, "Editor")
         self.notebook.SetSelection(1)
@@ -259,15 +278,21 @@ class App(wx.Frame):
 
     def new_python_project(self, event):
         projectTypeList = [
-            "Simple App", "Command Line App", "Tkinter App", "WxPython App", "Flask Web App"]
+            "Simple App", "Command Line App", "Tkinter App", "WxPython App",
+            "Flask Web App"
+        ]
         dlg = wx.SingleChoiceDialog(
-            self, "Pick The Type Of Project You Want To Create:", "New Project", projectTypeList)
+            self, "Pick The Type Of Project You Want To Create:",
+            "New Project", projectTypeList)
         if dlg.ShowModal() == wx.ID_OK:
             filename = ""
             selection = dlg.GetSelection()
             selection = projectTypeList[selection]
-            dlg = wx.DirDialog(self, "Select Directory For Your Project",
-                               self.dirname, style=wx.DD_DEFAULT_STYLE)
+            dlg = wx.DirDialog(
+                self,
+                "Select Directory For Your Project",
+                self.dirname,
+                style=wx.DD_DEFAULT_STYLE)
             if dlg.ShowModal() == wx.ID_OK:
                 self.editor.SetValue("")
                 self.dirname = dlg.GetPath()
@@ -277,8 +302,7 @@ class App(wx.Frame):
                         self.editor.SetValue(temps_for_project.simple_app)
                         file.write(self.editor.GetValue)
                     elif selection == "Command Line App":
-                        self.editor.SetValue(
-                            temps_for_project.command_line)
+                        self.editor.SetValue(temps_for_project.command_line)
                         file.write(self.editor.GetValue())
                     elif selection == "Tkinter App":
                         self.editor.SetValue(temps_for_project.tkinter)
@@ -305,9 +329,11 @@ class App(wx.Frame):
             self.updateDirTree()
             items_in_project = os.listdir(self.dirname)
             for item in items_in_project:
-                if (item == "main.py" or item == "index.py") and not path.isdir(item):
+                if (item == "main.py"
+                        or item == "index.py") and not path.isdir(item):
                     self.editor.SetValue(
                         open(path.join(self.dirname, item), "r").read())
+                    self.filename = item
         dlg.Destroy()
 
     def save_file(self, event):
@@ -322,8 +348,7 @@ class App(wx.Frame):
                 self,
                 message="Save As",
                 defaultDir=self.dirname,
-                style=wx.FD_SAVE
-            )
+                style=wx.FD_SAVE)
             if dlg.ShowModal() == wx.ID_OK:
                 loc = dlg.GetPath()
                 self.dirname = path.dirname(loc)
@@ -336,11 +361,7 @@ class App(wx.Frame):
     def saveas_file(self, event):
         self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
         dlg = wx.FileDialog(
-            self,
-            message="Save As",
-            defaultDir=self.dirname,
-            style=wx.FD_SAVE
-        )
+            self, message="Save As", defaultDir=self.dirname, style=wx.FD_SAVE)
         if dlg.ShowModal() == wx.ID_OK:
             loc = dlg.GetPath()
             self.dirname = path.dirname(loc)
