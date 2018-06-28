@@ -37,6 +37,8 @@ import temps_for_project
 import json
 import wx.lib.agw.flatnotebook as Notebook_Widget
 
+from yapf.yapflib.yapf_api import FormatCode
+
 import highlighter as Highlighter
 
 config = json.loads(open("./user_config.json").read())
@@ -64,9 +66,30 @@ class App(wx.Frame):
 
     def create_status_and_menu_bar(self):
 
+        self.CreateStatusBar(2)
+        self.StatusBar.SetBackgroundColour((220, 220, 220))
+        self.StatusBar.SetStatusWidths([1000, -1])
+        self.StatusBar.SetStatusText("Line 1")
+        self.StatusBar.SetStatusText("Python", 1)
+
         filemenu = wx.Menu()
-        file_new = filemenu.Append(
-            wx.ID_NEW, "&New\tCtrl+N", "Create A New Document")
+        file_new_menu = wx.Menu()
+        file_new_menu_python_project = file_new_menu.Append(
+            wx.ID_ANY, "&Python Project\tCtrl+N", "Create A Python Project")
+        file_new_menu_file_menu = wx.Menu()
+        file_new_menu_file_menu_python = file_new_menu_file_menu.Append(
+            wx.ID_ANY, "&Python File", "Create A Python File")
+        file_new_menu_file_menu_html = file_new_menu_file_menu.Append(
+            wx.ID_ANY, "&HTML File", "Create A HTML File")
+        file_new_menu_file_menu_yaml = file_new_menu_file_menu.Append(
+            wx.ID_ANY, "&YAML File", "Create A YAML File")
+        file_new_menu_file_menu.AppendSeparator()
+        file_new_menu_file_menu_file = file_new_menu_file_menu.Append(
+            wx.ID_ANY, "&File", "Create A File")
+        file_new_menu.AppendMenu(wx.ID_ANY, "&File", file_new_menu_file_menu)
+        # file_new = filemenu.Append(
+        #     wx.ID_NEW, "&New\tCtrl+N", "Create A New Document")
+        filemenu.AppendMenu(wx.ID_NEW, "&New", file_new_menu)
         file_open = filemenu.Append(
             wx.ID_OPEN, "&Open\tCtrl+O", "Open An Existing Document")
         file_save = filemenu.Append(
@@ -86,17 +109,60 @@ class App(wx.Frame):
         menubar.Append(projectmenu, "&Project")
         self.SetMenuBar(menubar)
 
-        self.Bind(wx.EVT_MENU, self.new_project, file_new)
+        # self.Bind(wx.EVT_MENU, self.new_project, file_new)
+        self.Bind(wx.EVT_MENU, self.new_python_project,
+                  file_new_menu_python_project)
+        self.Bind(wx.EVT_MENU, self.new_file,
+                  file_new_menu_file_menu_file)
+        self.Bind(wx.EVT_MENU, self.new_python_file,
+                  file_new_menu_file_menu_python)
+        self.Bind(wx.EVT_MENU, self.new_html_file,
+                  file_new_menu_file_menu_html)
+        self.Bind(wx.EVT_MENU, self.new_yaml_file,
+                  file_new_menu_file_menu_yaml)
         self.Bind(wx.EVT_MENU, self.open_project, file_open)
         self.Bind(wx.EVT_MENU, self.save_file, file_save)
         self.Bind(wx.EVT_MENU, self.saveas_file, file_saveas)
         self.Bind(wx.EVT_MENU, self.exit_app, quit_menuitem)
 
-        self.CreateStatusBar(2)
-        self.StatusBar.SetBackgroundColour((220, 220, 220))
-        self.StatusBar.SetStatusWidths([1000, -1])
-        self.StatusBar.SetStatusText("Line 1")
-        self.StatusBar.SetStatusText("Python", 1)
+    def new_python_file(self, event):
+        dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
+        if dlg.ShowModal() == wx.ID_OK:
+            path_of_file = dlg.GetValue()
+            open(path.join(self.dirname, "{}.py".format(
+                path_of_file)), "w+").write("import __hello__")
+            self.dirTree.DeleteAllItems()
+            self.updateDirTree()
+        dlg.Destroy()
+
+    def new_html_file(self, event):
+        dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
+        if dlg.ShowModal() == wx.ID_OK:
+            path_of_file = dlg.GetValue()
+            open(path.join(self.dirname, "{}.html".format(
+                path_of_file)), "w+").write(temps_for_project.html)
+            self.dirTree.DeleteAllItems()
+            self.updateDirTree()
+        dlg.Destroy()
+
+    def new_yaml_file(self, event):
+        dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
+        if dlg.ShowModal() == wx.ID_OK:
+            path_of_file = dlg.GetValue()
+            open(path.join(self.dirname, "{}.yml".format(
+                path_of_file)), "w+").write(temps_for_project.yml)
+            self.dirTree.DeleteAllItems()
+            self.updateDirTree()
+        dlg.Destroy()
+
+    def new_file(self, event):
+        dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
+        if dlg.ShowModal() == wx.ID_OK:
+            path_of_file = dlg.GetValue()
+            open(path.join(self.dirname, path_of_file), "w+").write("")
+            self.dirTree.DeleteAllItems()
+            self.updateDirTree()
+        dlg.Destroy()
 
     def install_package(self, event):
         pass
@@ -191,7 +257,7 @@ class App(wx.Frame):
         if event != None:
             event.Skip()
 
-    def new_project(self, event):
+    def new_python_project(self, event):
         projectTypeList = [
             "Simple App", "Command Line App", "Tkinter App", "WxPython App", "Flask Web App"]
         dlg = wx.SingleChoiceDialog(
@@ -225,7 +291,7 @@ class App(wx.Frame):
                         file.write(self.editor.GetValue())
                 self.dirTree.DeleteAllItems()
                 self.updateDirTree()
-                self.notebook.ChangeSelection(1)
+                self.notebook.SetSelection(1)
         dlg.Destroy()
 
     def exit_app(self, event):
@@ -241,10 +307,12 @@ class App(wx.Frame):
 
     def save_file(self, event):
         try:
+            self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
             fp = path.join(self.dirname, self.filename)
             with open(fp, "w+") as file:
                 file.write(self.editor.GetValue())
         except:
+            self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
             dlg = wx.FileDialog(
                 self,
                 message="Save As",
@@ -261,6 +329,7 @@ class App(wx.Frame):
                 dlg.Destroy()
 
     def saveas_file(self, event):
+        self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
         dlg = wx.FileDialog(
             self,
             message="Save As",
