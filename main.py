@@ -303,6 +303,11 @@ class App(wx.Frame):
             self.dirname = dlg.GetPath()
             self.dirTree.DeleteAllItems()
             self.updateDirTree()
+            items_in_project = os.listdir(self.dirname)
+            for item in items_in_project:
+                if (item == "main.py" or item == "index.py") and not path.isdir(item):
+                    self.editor.SetValue(
+                        open(path.join(self.dirname, item), "r").read())
         dlg.Destroy()
 
     def save_file(self, event):
