@@ -31,22 +31,22 @@ else:
              }
 
 
-class Highlighter():
+def python(editor):
 
-    def python(editor):
+    styles = json.loads(open("./user_config.json",
+                             "r").read())["styles"]["python"]
+    pyHighlight.highlight(editor, styles, faces)
 
-        styles = json.loads(open("./user_config.json",
-                                 "r").read())["styles"]["python"]
-        pyHighlight.highlight(editor, styles, faces)
 
-    def html(editor):
+def html(editor):
 
-        styles = json.loads(open("./user_config.json",
-                                 "r").read())["styles"]["html"]
-        htmlHighlighter.highlight(editor, styles, faces)
+    styles = json.loads(open("./user_config.json",
+                             "r").read())["styles"]["html"]
+    htmlHighlighter.highlight(editor, styles, faces)
 
-    def yaml(editor):
 
-        styles = json.loads(open("./user_config.json",
-                                 "r").read())["styles"]["yaml"]
-        yamlHighlighter.highlight(editor, styles, faces)
+def yaml(editor):
+
+    styles = json.loads(open("./user_config.json",
+                             "r").read())["styles"]["yaml"]
+    yamlHighlighter.highlight(editor, styles, faces)

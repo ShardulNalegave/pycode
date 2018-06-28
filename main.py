@@ -35,8 +35,9 @@ import wx.stc as stc
 import keyword
 import temps_for_project
 import json
+import wx.lib.agw.flatnotebook as Notebook_Widget
 
-from highlighter import Highlighter
+import highlighter as Highlighter
 
 config = json.loads(open("./user_config.json").read())
 
@@ -91,8 +92,11 @@ class App(wx.Frame):
         self.Bind(wx.EVT_MENU, self.saveas_file, file_saveas)
         self.Bind(wx.EVT_MENU, self.exit_app, quit_menuitem)
 
-        self.CreateStatusBar()
+        self.CreateStatusBar(2)
         self.StatusBar.SetBackgroundColour((220, 220, 220))
+        self.StatusBar.SetStatusWidths([1000, -1])
+        self.StatusBar.SetStatusText("Line 1")
+        self.StatusBar.SetStatusText("Python", 1)
 
     def install_package(self, event):
         pass
@@ -122,14 +126,26 @@ class App(wx.Frame):
         del _
         if self.file_ext == ".py":
             Highlighter.python(editor=self.editor)
+            self.StatusBar.SetStatusText("Python", 1)
         elif self.file_ext == ".htm" or self.file_ext == ".html":
+            self.StatusBar.SetStatusText("HTML", 1)
             Highlighter.html(editor=self.editor)
         elif self.file_ext in [".yml", ".yaml"]:
+            self.StatusBar.SetStatusText("YAML", 1)
             Highlighter.yaml(editor=self.editor)
+        elif self.file_ext in [".css"]:
+            self.StatusBar.SetStatusText("CSS", 1)
+            Highlighter.css(editor=editor)
+        self.notebook.SetSelection(1)
 
     def load_widgets(self):
 
-        self.notebook = wx.Notebook(self)
+        self.notebook = Notebook_Widget.FlatNotebook(
+            self, wx.ID_ANY)
+
+        self.notebook.SetAGWWindowStyleFlag(Notebook_Widget.FNB_NO_X_BUTTON)
+        self.notebook.SetAGWWindowStyleFlag(Notebook_Widget.FNB_NO_NAV_BUTTONS)
+        self.notebook.SetAGWWindowStyleFlag(Notebook_Widget.FNB_NODRAG)
 
         self.dirTree = wx.TreeCtrl(
             self.notebook, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize,
@@ -167,7 +183,7 @@ class App(wx.Frame):
         Highlighter.python(editor=self.editor)
 
         self.notebook.AddPage(self.editor, "Editor")
-        self.notebook.ChangeSelection(1)
+        self.notebook.SetSelection(1)
 
     def updateCaretPosInStatusBar(self, event=None):
         lineno = int(self.editor.GetCurrentLine()) + 1
