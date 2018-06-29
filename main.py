@@ -56,7 +56,8 @@ class App(wx.Frame):
 
         self.create_status_and_menu_bar()
         self.load_widgets()
-        self.updateCaretPosInStatusBar()
+        self.load_settings_widgets()
+        self.editor_keydown()
 
         self.Show()
         self.Maximize()
@@ -67,7 +68,7 @@ class App(wx.Frame):
 
         self.CreateStatusBar(2)
         self.StatusBar.SetBackgroundColour((220, 220, 220))
-        self.StatusBar.SetStatusWidths([1000, -1])
+        self.StatusBar.SetStatusWidths([-4, -1])
         self.StatusBar.SetStatusText("Line 1")
         self.StatusBar.SetStatusText("Python", 1)
 
@@ -102,12 +103,25 @@ class App(wx.Frame):
         quit_menuitem = filemenu.Append(wx.ID_EXIT, "&Quit\tCtrl+Q",
                                         "Quits The Application")
 
+        projectmenu = wx.Menu()
+        projectmenu_runcurrfile = projectmenu.Append(
+            wx.ID_ANY, "&Run Current File\tCtrl+R", "Run Current File In Python Shell")
+
         viewmenu = wx.Menu()
-        viewmenu_shell = viewmenu.Append(wx.ID_ANY, "&Shell", "Start Python Shell")
+        viewmenu_shell = viewmenu.Append(
+            wx.ID_ANY, "&Shell\tCtrl+`", "Start Python Shell")
+        viewmenu.AppendSeparator()
+        viewmenu_settings = viewmenu.Append(
+            wx.ID_ANY, "S&ettings\tCtrl+,", "Edit Settings")
+
+        # editmenu = wx.Menu()
+        # editmenu_togglecomment = editmenu.Append(wx.ID_ANY, "&Toggle Line Comment\tCtrl+.")
 
         menubar = wx.MenuBar()
         menubar.Append(filemenu, "&File")
+        # menubar.Append(editmenu, "&Edit")
         menubar.Append(viewmenu, "&View")
+        menubar.Append(projectmenu, "&Project")
         self.SetMenuBar(menubar)
 
         # self.Bind(wx.EVT_MENU, self.new_project, file_new)
@@ -126,16 +140,36 @@ class App(wx.Frame):
         self.Bind(wx.EVT_MENU, self.saveas_file, file_saveas)
         self.Bind(wx.EVT_MENU, self.exit_app, quit_menuitem)
         self.Bind(wx.EVT_MENU, self.view_python_shell, viewmenu_shell)
+        self.Bind(wx.EVT_MENU, self.open_settings, viewmenu_settings)
+        self.Bind(wx.EVT_MENU, self.run_curr_file, projectmenu_runcurrfile)
+
+    def open_settings(self, event):
+        self.settings_win.Show()
 
     def view_python_shell(self, event):
+        shellWin = wx.Frame(self, title="Python Shell", size=(800, 600))
+        shell = wx.py.shell.Shell(
+            shellWin, wx.ID_ANY)
+        shellWin.Show()
+
+    def run_curr_file(self, event):
         if self.file_ext == ".py":
-            shellWin = wx.Frame(self, title="Python Shell", size=(800, 600))
+            shellWin = wx.Frame(
+                self, title="Run Current File", size=(800, 600))
             shell = wx.py.shell.Shell(
                 shellWin, wx.ID_ANY)
             shellWin.Show()
+            shell.run("import os")
+            shell.run("os.system('python3.6 {}')".format(
+                path.join(self.dirname, self.filename)))
+            shellWin.Close()
+        elif self.file_ext in [".html", ".htm"]:
+            import webbrowser
+            webbrowser.open("file://{}".format(self.dirname, self.filename))
 
     def new_directory(self, event):
-        dlg = wx.TextEntryDialog(self, "New File", "Enter The Name Of File")
+        dlg = wx.TextEntryDialog(
+            self, "New Directory", "Enter The Name Of Directory")
         if dlg.ShowModal() == wx.ID_OK:
             dirname = dlg.GetValue()
             os.mkdir(path.join(self.dirname, dirname))
@@ -248,7 +282,7 @@ class App(wx.Frame):
             ord("-"), stc.STC_SCMOD_CTRL, stc.STC_CMD_ZOOMOUT)
         self.editor.SetViewWhiteSpace(False)
         self.editor.SetMargins(50, 50)
-        self.editor.SetMarginType(1, stc.STC_MARGIN_NUMBER)
+        self.editor.SetMarginType(2, stc.STC_MARGIN_NUMBER)
         self.editor.SetMarginWidth(2, 35)
         self.editor.SetMarginLeft(10)
         # self.editor.SetMarginType(
@@ -260,9 +294,10 @@ class App(wx.Frame):
         self.editor.SetProperty("tab.timmy.whinge.level", "1")
         self.editor.SetEdgeMode(stc.STC_EDGE_BACKGROUND)
         self.editor.SetEdgeColumn(78)
-        self.editor.Bind(wx.EVT_KEY_DOWN, self.updateCaretPosInStatusBar)
+        self.editor.Bind(wx.EVT_KEY_DOWN, self.editor_keydown)
         self.editor.SetValue("import __hello__")
         self.editor.SetIndent(4)
+        self.editor.SetUseHorizontalScrollBar(False)
 
         Highlighter.python(editor=self.editor)
         self.file_ext = ".py"
@@ -270,9 +305,25 @@ class App(wx.Frame):
         self.notebook.AddPage(self.editor, "Editor")
         self.notebook.SetSelection(1)
 
-    def updateCaretPosInStatusBar(self, event=None):
+    def load_settings_widgets(self, event=None):
+        self.settings_win = wx.Frame(self, title="Settings")
+        self.settings_notebook = Notebook_Widget.FlatNotebook(
+            self.settings_win, wx.ID_ANY)
+        self.settings_notebook.SetAGWWindowStyleFlag(
+            Notebook_Widget.FNB_NO_X_BUTTON)
+        self.settings_notebook.SetAGWWindowStyleFlag(
+            Notebook_Widget.FNB_NO_NAV_BUTTONS)
+        self.settings_notebook.SetAGWWindowStyleFlag(
+            Notebook_Widget.FNB_NODRAG)
+        self.settings_editor = stc.StyledTextCtrl(
+            self.settings_notebook, wx.ID_ANY, style=wx.TE_MULTILINE | wx.TE_WORDWRAP)
+        self.settings_editor.SetLexer(stc.STC_LEX_AUTOMATIC)
+        self.settings_notebook.AddPage(self.settings_editor, "My Settings")
+
+    def editor_keydown(self, event=None):
         lineno = int(self.editor.GetCurrentLine()) + 1
-        self.StatusBar.SetStatusText("Line {}".format(str(lineno)))
+        self.StatusBar.SetStatusText(
+            "Line {}".format(str(lineno)))
         if event != None:
             event.Skip()
 
