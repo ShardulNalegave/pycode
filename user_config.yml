@@ -1,0 +1,29 @@
+styles:
+    python:
+        default: "#000000"
+        keyword: "#EF5350"
+        comment-line: "#BDBDBD"
+        block_comment: "#BDBDBD"
+        string: "#43A047"
+        block_string: "#43A047"
+        operators: "#EF5350"
+        number: "#29B6F6"
+        EOL_when_string_not_closed: "#E53935"
+        class_and_function_names: "#7E57C2"
+        identifiers: "#000000"
+        decorator: "#E53935"
+    global:
+        linenum_back: "#F5F5F5"
+        cursor: "#000000"
+    html:
+        default: "#000000"
+        comment: "#9E9E9E"
+        string: "#66BB6A"
+        attribute: "#EF5350"
+        tag: "#7986CB"
+    yaml:
+        default: "#000000"
+        comment: "#66BB6A"
+        identifier: "#7E57C2"
+        error: "#E53935"
+        number: "#2196F3"

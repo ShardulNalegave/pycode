@@ -33,15 +33,49 @@ import wx
 import wx.stc as stc
 import keyword
 import temps_for_project
-import json
 import wx.lib.agw.flatnotebook as Notebook_Widget
 import wx.py
+import yaml
 
 from yapf.yapflib.yapf_api import FormatCode
 
 import highlighter as Highlighter
 
-config = json.loads(open("./user_config.json").read())
+try:
+    config = yaml.load(open("./user_config.yml").read())
+except FileNotFoundError:
+    with open("./user_config.yml", "w+") as file:
+        file.write("""
+styles:
+    python:
+        default: "#000000"
+        keyword: "#EF5350"
+        comment-line: "#BDBDBD"
+        block_comment: "#BDBDBD"
+        string: "#43A047"
+        block_string: "#43A047"
+        operators: "#EF5350"
+        number: "#29B6F6"
+        EOL_when_string_not_closed: "#E53935"
+        class_and_function_names: "#7E57C2"
+        identifiers: "#000000"
+        decorator: "#E53935"
+    global:
+        linenum_back: "#F5F5F5"
+        cursor: "#000000"
+    html:
+        default: "#000000"
+        comment: "#9E9E9E"
+        string: "#66BB6A"
+        attribute: "#EF5350"
+        tag: "#7986CB"
+    yaml:
+        default: "#000000"
+        comment: "#66BB6A"
+        identifier: "#7E57C2"
+        error: "#E53935"
+        number: "#2196F3"
+""")
 
 
 class App(wx.Frame):
@@ -57,12 +91,12 @@ class App(wx.Frame):
         self.create_status_and_menu_bar()
         self.load_widgets()
         self.load_settings_widgets()
-        self.editor_keydown()
+        self.editor_keyup()
+
+        self.open_project()
 
         self.Show()
         self.Maximize()
-
-        self.open_project()
 
     def create_status_and_menu_bar(self):
 
@@ -294,7 +328,7 @@ class App(wx.Frame):
         self.editor.SetProperty("tab.timmy.whinge.level", "1")
         self.editor.SetEdgeMode(stc.STC_EDGE_BACKGROUND)
         self.editor.SetEdgeColumn(78)
-        self.editor.Bind(wx.EVT_KEY_DOWN, self.editor_keydown)
+        self.editor.Bind(wx.EVT_KEY_UP, self.editor_keyup)
         self.editor.SetValue("import __hello__")
         self.editor.SetIndent(4)
         self.editor.SetUseHorizontalScrollBar(False)
@@ -306,25 +340,29 @@ class App(wx.Frame):
         self.notebook.SetSelection(1)
 
     def load_settings_widgets(self, event=None):
+        global config
         self.settings_win = wx.Frame(self, title="Settings")
-        self.settings_notebook = Notebook_Widget.FlatNotebook(
-            self.settings_win, wx.ID_ANY)
-        self.settings_notebook.SetAGWWindowStyleFlag(
-            Notebook_Widget.FNB_NO_X_BUTTON)
-        self.settings_notebook.SetAGWWindowStyleFlag(
-            Notebook_Widget.FNB_NO_NAV_BUTTONS)
-        self.settings_notebook.SetAGWWindowStyleFlag(
-            Notebook_Widget.FNB_NODRAG)
         self.settings_editor = stc.StyledTextCtrl(
-            self.settings_notebook, wx.ID_ANY, style=wx.TE_MULTILINE | wx.TE_WORDWRAP)
-        self.settings_editor.SetLexer(stc.STC_LEX_AUTOMATIC)
-        self.settings_notebook.AddPage(self.settings_editor, "My Settings")
+            self.settings_win, wx.ID_ANY, style=wx.TE_MULTILINE | wx.TE_WORDWRAP)
+        Highlighter.yaml(editor=self.settings_editor)
+        config = yaml.load(open("./user_config.yml"))
+        self.settings_editor.SetValue(open("./user_config.yml").read())
+        self.settings_editor.SetViewWhiteSpace(False)
+        self.settings_editor.SetMargins(50, 50)
+        self.settings_editor.SetMarginType(2, stc.STC_MARGIN_NUMBER)
+        self.settings_editor.SetMarginWidth(2, 35)
+        self.settings_editor.SetMarginLeft(10)
 
-    def editor_keydown(self, event=None):
+    def editor_keyup(self, event=None):
         lineno = int(self.editor.GetCurrentLine()) + 1
+        colno = int(self.editor.GetColumn(self.editor.GetCurrentPos()))
         self.StatusBar.SetStatusText(
-            "Line {}".format(str(lineno)))
+            "Line {}, Column {}".format(str(lineno), str(colno)))
         if event != None:
+            if event.GetKeyCode() == ord("("):
+                pos = self.editor.GetCurrentPos()
+                self.editor.AddText(")")
+                self.editor.CharLeft()
             event.Skip()
 
     def new_python_project(self, event):
@@ -388,18 +426,18 @@ class App(wx.Frame):
         dlg.Destroy()
 
     def save_file(self, event):
+        self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
         try:
-            self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
             fp = path.join(self.dirname, self.filename)
             with open(fp, "w+") as file:
                 file.write(self.editor.GetValue())
         except:
-            self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
             dlg = wx.FileDialog(
                 self,
                 message="Save As",
                 defaultDir=self.dirname,
-                style=wx.FD_SAVE)
+                style=wx.FD_SAVE
+            )
             if dlg.ShowModal() == wx.ID_OK:
                 loc = dlg.GetPath()
                 self.dirname = path.dirname(loc)
@@ -412,7 +450,11 @@ class App(wx.Frame):
     def saveas_file(self, event):
         self.editor.SetValue(FormatCode(self.editor.GetValue())[0])
         dlg = wx.FileDialog(
-            self, message="Save As", defaultDir=self.dirname, style=wx.FD_SAVE)
+            self,
+            message="Save As",
+            defaultDir=self.dirname,
+            style=wx.FD_SAVE
+        )
         if dlg.ShowModal() == wx.ID_OK:
             loc = dlg.GetPath()
             self.dirname = path.dirname(loc)

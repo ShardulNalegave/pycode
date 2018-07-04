@@ -4,6 +4,9 @@ import json
 import pyHighlight
 import htmlHighlighter
 import yamlHighlighter
+import yaml
+
+style_config = yaml.load(open("./user_config.yml"))["styles"]
 
 if wx.Platform == '__WXMSW__':
     faces = {'times': 'Times New Roman',
@@ -32,21 +35,12 @@ else:
 
 
 def python(editor):
-
-    styles = json.loads(open("./user_config.json",
-                             "r").read())["styles"]["python"]
-    pyHighlight.highlight(editor, styles, faces)
+    pyHighlight.highlight(editor, style_config["python"], faces)
 
 
 def html(editor):
-
-    styles = json.loads(open("./user_config.json",
-                             "r").read())["styles"]["html"]
-    htmlHighlighter.highlight(editor, styles, faces)
+    htmlHighlighter.highlight(editor, style_config["html"], faces)
 
 
 def yaml(editor):
-
-    styles = json.loads(open("./user_config.json",
-                             "r").read())["styles"]["yaml"]
-    yamlHighlighter.highlight(editor, styles, faces)
+    yamlHighlighter.highlight(editor, style_config["yaml"], faces)
