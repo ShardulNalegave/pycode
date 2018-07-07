@@ -79,12 +79,12 @@ styles:
 
 
 class App(wx.Frame):
-    def __init__(self, parent, title):
+    def __init__(self, parent, title, dir_or_file_path):
 
         self.title = title
+        self.dirname = os.getcwd()
         self.filename = ""
         self.file_ext = ".py"
-        self.dirname = os.getcwd()
 
         wx.Frame.__init__(self, parent, title=self.title, size=(800, 600))
 
@@ -93,7 +93,37 @@ class App(wx.Frame):
         self.load_settings_widgets()
         self.editor_keyup()
 
-        self.open_project()
+        print(dir_or_file_path)
+
+        if dir_or_file_path != "":
+            path_to_open = path.abspath(
+                path.join(path.abspath(os.getcwd()), dir_or_file_path))
+            if path.isdir(path_to_open):
+                self.dirname = path.abspath(path_to_open)
+                items_in_project = os.listdir(path.abspath(self.dirname))
+                self.dirTree.DeleteAllItems()
+                self.updateDirTree()
+                for item in items_in_project:
+                    if (item == "main.py"
+                            or item == "index.py") and not path.isdir(item):
+                        self.editor.SetValue(
+                            open(path.join(self.dirname, item), "r").read())
+                        self.filename = item
+                        self.file_ext = path.splitext(self.filename)
+            elif path.isfile(path.join(os.getcwd(), dir_or_file_path)):
+                self.dirname = path.dirname(path.abspath(path_to_open))
+                self.dirTree.DeleteAllItems()
+                self.updateDirTree()
+                self.filename = path.basename(path.abspath(path_to_open))
+                self.file_ext = path.splitext(self.filename)
+                self.editor.SetValue(
+                    open(path.join(self.dirname, self.filename), "r").read())
+            # print(path.abspath(path.join(path.abspath(os.getcwd()), dir_or_file_path)))
+        elif dir_or_file_path == "":
+            self.dirname = os.getcwd()
+            self.filename = ""
+            self.file_ext = ".py"
+            self.open_project()
 
         self.Show()
         self.Maximize()
@@ -179,6 +209,7 @@ class App(wx.Frame):
 
     def open_settings(self, event):
         self.settings_win.Show()
+        self.load_settings_widgets()
 
     def view_python_shell(self, event):
         shellWin = wx.Frame(self, title="Python Shell", size=(800, 600))
@@ -423,6 +454,7 @@ class App(wx.Frame):
                     self.editor.SetValue(
                         open(path.join(self.dirname, item), "r").read())
                     self.filename = item
+                    self.file_ext = ".py"
         dlg.Destroy()
 
     def save_file(self, event):
@@ -465,6 +497,18 @@ class App(wx.Frame):
             dlg.Destroy()
 
 
-root = wx.App()
-App(None, title="PyCode - Code Editor")
-root.MainLoop()
+import click
+
+
+@click.command()
+@click.argument("dir_or_file_path")
+@click.version_option("0.0.1")
+def pycode(dir_or_file_path=""):
+    print(path.abspath(dir_or_file_path))
+    root = wx.App()
+    App(None, title="PyCode - Code Editor", dir_or_file_path=dir_or_file_path)
+    root.MainLoop()
+
+
+if __name__ == "__main__":
+    pycode()
